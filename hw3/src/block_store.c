@@ -10,6 +10,14 @@
 // remove it before you submit. Just allows things to compile initially.
 #define UNUSED(x) (void)(x)
 
+//this is the implentaion of block_store that was defined in block_store.h
+struct block_store
+{
+	uint8_t *blocks; //this is the raw block storage
+	bitmap_t *fbm;	//this is the free block map (this will exist in the block data as overlay)
+};
+
+
 block_store_t *block_store_create()
 {
 	return NULL;
