@@ -20,7 +20,11 @@ struct block_store
 
 block_store_t *block_store_create()
 {
-	return NULL;
+	block_store_t * new_block = calloc(1, sizeof(block_store_t));
+	if (new_block == NULL) return NULL;
+	new_block->fbm = bitmap_overlay(BITMAP_SIZE_BITS, (void * const)BITMAP_START_BLOCK);
+	block_store_request(new_block, BITMAP_START_BLOCK);
+	return new_block;
 }
 
 void block_store_destroy(block_store_t *const bs)
