@@ -75,8 +75,34 @@ void block_store_destroy(block_store_t *const bs)
 
 size_t block_store_allocate(block_store_t *const bs)
 {
-	UNUSED(bs);
-	return 0;
+	if(!bs || !bs->fbm)
+	{
+		return SIZE_MAX;
+	}
+
+	//look for first free block
+	for (size_t i = 0; i < BLOCK_STORE_NUM_BLOCKS; i++)
+    {
+        //check if block is free
+        if (!bitmap_test(bs->fbm, i))
+        {
+            //mark as used
+            bitmap_set(bs->fbm, i);
+
+            //check to see if the set worked
+            if (bitmap_test(bs->fbm, i))
+            {
+                return i;
+            }
+            else
+            {
+                return SIZE_MAX;
+            }
+        }
+    }
+
+	//no free block
+	return SIZE_MAX;
 }
 
 bool block_store_request(block_store_t *const bs, const size_t block_id)
