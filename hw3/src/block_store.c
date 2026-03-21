@@ -20,11 +20,44 @@ struct block_store
 
 block_store_t *block_store_create()
 {
-	block_store_t * new_block = calloc(1, sizeof(block_store_t));
-	if (new_block == NULL) return NULL;
-	new_block->fbm = bitmap_overlay(BITMAP_SIZE_BITS, (void * const)BITMAP_START_BLOCK);
-	block_store_request(new_block, BITMAP_START_BLOCK);
-	return new_block;
+	//This is old that ben has fixed
+	// block_store_t * new_block = calloc(1, sizeof(block_store_t));
+	// if (new_block == NULL) return NULL;
+	// new_block->fbm = bitmap_overlay(BITMAP_SIZE_BITS, (void * const)BITMAP_START_BLOCK);
+	// block_store_request(new_block, BITMAP_START_BLOCK);
+	// return new_block;
+
+	//allocate stuct
+	block_store_t *bs = (block_store_t*)calloc(1, sizeof(block_store_t));
+	if(!bs)	//check to see if memory was allocate
+	{
+		return NULL; //memory allocation failed return NULL
+	}
+
+	//allocate block storage
+	bs->blocks = (uint8_t*)calloc(BLOCK_STORE_NUM_BLOCKS, BLOCK_SIZE_BYTES);
+	if(!bs->blocks)	//check to see if blocks allocated
+	{
+		free(bs); //free block struct
+		return NULL;
+	}
+
+	//overlay bit map inside block storage
+	bs->fbm = bitmap_overlay(BITMAP_SIZE_BITS, bs->blocks + (BITMAP_START_BLOCK * BLOCK_SIZE_BYTES));
+	if(!bs->fbm)
+	{
+		free(bs->blocks);
+		free(bs);
+		return NULL;
+	}
+
+	//we now how the memory
+	//Now we must set the bit map as used
+	size_t bitmap_blocks = (BITMAP_SIZE_BYTES + BLOCK_SIZE_BYTES - 1) / BLOCK_SIZE_BYTES;
+	for(size_t i = 0; i < bitmap_blocks; i++)
+	{
+		bitmap_set(bs->fbm, BITMAP_START_BLOCK + i);
+	}
 }
 
 void block_store_destroy(block_store_t *const bs)
