@@ -107,9 +107,27 @@ size_t block_store_allocate(block_store_t *const bs)
 
 bool block_store_request(block_store_t *const bs, const size_t block_id)
 {
-	UNUSED(bs);
-	UNUSED(block_id);
-	return false;
+	//verify inputs
+	if(!bs || !bs->fbm || !block_id)
+	{
+		return false;
+	}
+
+	//check the bounds
+    if (block_id >= BLOCK_STORE_NUM_BLOCKS)
+	{
+		return false;
+	}        
+
+	//check to see if already allocated
+    if (bitmap_test(bs->fbm, block_id))
+        return false;
+
+    //mark as used
+    bitmap_set(bs->fbm, block_id);
+
+    //verify
+    return bitmap_test(bs->fbm, block_id);
 }
 
 void block_store_release(block_store_t *const bs, const size_t block_id)
