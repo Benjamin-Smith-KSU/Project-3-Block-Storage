@@ -58,6 +58,7 @@ block_store_t *block_store_create()
 	{
 		bitmap_set(bs->fbm, BITMAP_START_BLOCK + i);
 	}
+	return(bs);
 }
 
 void block_store_destroy(block_store_t *const bs)
