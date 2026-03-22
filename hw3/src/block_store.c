@@ -132,8 +132,22 @@ bool block_store_request(block_store_t *const bs, const size_t block_id)
 
 void block_store_release(block_store_t *const bs, const size_t block_id)
 {
-	UNUSED(bs);
-	UNUSED(block_id);
+	if (!bs || !bs->fbm)
+	{
+		return;
+	}
+
+	if (block_id >= BLOCK_STORE_NUM_BLOCKS)
+	{
+		return;
+	}
+
+	if (block_id >= BITMAP_START_BLOCK && block_id < (BITMAP_START_BLOCK + BITMAP_NUM_BLOCKS))
+	{
+		return;
+	}
+
+	bitmap_reset(bs->fbm, block_id);
 }
 
 size_t block_store_get_used_blocks(const block_store_t *const bs)
