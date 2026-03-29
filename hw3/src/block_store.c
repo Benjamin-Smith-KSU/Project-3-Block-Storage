@@ -4,7 +4,7 @@
 #include "bitmap.h"
 #include "block_store.h"
 // include more if you need
-
+#include <string.h> //for memcpy
 
 // You might find this handy. I put it around unused parameters, but you should
 // remove it before you submit. Just allows things to compile initially.
@@ -188,7 +188,7 @@ size_t block_store_read(const block_store_t *const bs, const size_t block_id, vo
 
 	//------------Find data in memory-----------------
 	//compute source adress
-	uint8_t src =  = bs->blocks + (block_id * BLOCK_SIZE_BYTES);
+	uint8_t* src = bs->blocks + (block_id * BLOCK_SIZE_BYTES);
 
 	//now we copy to buffer
 	memcpy(buffer, src, BLOCK_SIZE_BYTES);
