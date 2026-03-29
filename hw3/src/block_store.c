@@ -176,7 +176,7 @@ size_t block_store_read(const block_store_t *const bs, const size_t block_id, vo
 		return 0;	//can not use null inputs
 	}
 	//check if block_id makes sense
-	if(block_id >= BLOCK_STORE_NUM_BLOCKS || block_id != 0)
+	if(block_id >= BLOCK_STORE_NUM_BLOCKS)
 	{
 		return 0; 	//block id was out of bounds
 	}
