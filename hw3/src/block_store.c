@@ -4,7 +4,7 @@
 #include "bitmap.h"
 #include "block_store.h"
 // include more if you need
-
+#include <string.h> //for memcpy
 
 // You might find this handy. I put it around unused parameters, but you should
 // remove it before you submit. Just allows things to compile initially.
@@ -169,10 +169,32 @@ size_t block_store_get_total_blocks()
 
 size_t block_store_read(const block_store_t *const bs, const size_t block_id, void *buffer)
 {
-	UNUSED(bs);
-	UNUSED(block_id);
-	UNUSED(buffer);
-	return 0;
+	//-------------input validation------------------
+	//check to see if all inputs are not null
+	if(!bs || !buffer || !bs->blocks || !bs->fbm)
+	{
+		return 0;	//can not use null inputs
+	}
+	//check if block_id makes sense
+	if(block_id >= BLOCK_STORE_NUM_BLOCKS)
+	{
+		return 0; 	//block id was out of bounds
+	}
+	//check to see if block has been alocated
+	if(!bitmap_test(bs->fbm, block_id))
+	{
+		return 0;	//can not read from non alocated block
+	}
+
+	//------------Find data in memory-----------------
+	//compute source adress
+	uint8_t* src = bs->blocks + (block_id * BLOCK_SIZE_BYTES);
+
+	//now we copy to buffer
+	memcpy(buffer, src, BLOCK_SIZE_BYTES);
+
+	return(BLOCK_SIZE_BYTES);
+
 }
 
 size_t block_store_write(block_store_t *const bs, const size_t block_id, const void *buffer)
