@@ -152,13 +152,17 @@ void block_store_release(block_store_t *const bs, const size_t block_id)
 
 size_t block_store_get_used_blocks(const block_store_t *const bs)
 {
+	// check if value is null, if so, return impossible value
 	if (!bs || !bs->fbm) return -1;
+	// return value of used blocks
 	return bitmap_total_set(bs->fbm);
 }
 
 size_t block_store_get_free_blocks(const block_store_t *const bs)
 {
+	// check if value is null, if so, return impossible value
 	if (!bs || !bs->fbm) return -1;
+	// return value of free blocks
 	return (BLOCK_STORE_NUM_BLOCKS - bitmap_total_set(bs->fbm));
 }
 
