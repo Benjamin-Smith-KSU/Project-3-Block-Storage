@@ -203,10 +203,32 @@ size_t block_store_read(const block_store_t *const bs, const size_t block_id, vo
 
 size_t block_store_write(block_store_t *const bs, const size_t block_id, const void *buffer)
 {
-	UNUSED(bs);
-	UNUSED(block_id);
-	UNUSED(buffer);
-	return 0;
+	//-------------input validation------------------
+	//check to see if all inputs are valid
+	if (!bs || !buffer || !bs->blocks || !bs->fbm)
+	{
+		return 0;
+	}
+
+	//check block bounds
+	if (block_id >= BLOCK_STORE_NUM_BLOCKS)
+	{
+		return 0;
+	}
+
+	//check that block is allocated
+	if (!bitmap_test(bs->fbm, block_id))
+	{
+		return 0;
+	}
+
+	//compute destination address
+	uint8_t *dest = bs->blocks + (block_id * BLOCK_SIZE_BYTES);
+
+	//copy buffer into block storage
+	memcpy(dest, buffer, BLOCK_SIZE_BYTES);
+
+	return BLOCK_SIZE_BYTES;
 }
 
 block_store_t *block_store_deserialize(const char *const filename)
