@@ -244,9 +244,9 @@ block_store_t *block_store_deserialize(const char *const filename)
 		return NULL;
 	}
 
-	// open file for binary read
-	FILE *fp = fopen(filename, "rb");
-	if (!fp)
+	// open file for reading
+	int fd = open(filename, O_RDONLY);
+	if (fd < 0)
 	{
 		return NULL;
 	}
@@ -255,7 +255,7 @@ block_store_t *block_store_deserialize(const char *const filename)
 	block_store_t *bs = calloc(1, sizeof(block_store_t));
 	if (!bs)
 	{
-		fclose(fp);
+		close(fd);
 		return NULL;
 	}
 
@@ -263,26 +263,33 @@ block_store_t *block_store_deserialize(const char *const filename)
 	bs->blocks = calloc(BLOCK_STORE_NUM_BLOCKS, BLOCK_SIZE_BYTES);
 	if (!bs->blocks)
 	{
-		fclose(fp);
+		close(fd);
 		free(bs);
 		return NULL;
 	}
 
 	// read all block data from file
-	size_t bytes_expected = BLOCK_STORE_NUM_BLOCKS * BLOCK_SIZE_BYTES;
-	size_t bytes_read = fread(bs->blocks, 1, bytes_expected, fp);
-	fclose(fp);
+	size_t bytes_expected = BLOCK_STORE_NUM_BYTES;
+	size_t total_read = 0;
 
-	if (bytes_read != bytes_expected)
+	while (total_read < bytes_expected)
 	{
-		free(bs->blocks);
-		free(bs);
-		return NULL;
+		ssize_t bytes_read = read(fd, bs->blocks + total_read, bytes_expected - total_read);
+		if (bytes_read <= 0)
+		{
+			close(fd);
+			free(bs->blocks);
+			free(bs);
+			return NULL;
+		}
+		total_read += (size_t)bytes_read;
 	}
 
-	// recreate bitmap overlay using the bitmap region inside block storage
+	close(fd);
+
+	// recreate bitmap overlay using bitmap region inside block storage
 	bs->fbm = bitmap_overlay(BITMAP_SIZE_BITS,
-							 bs->blocks + (BITMAP_START_BLOCK * BLOCK_SIZE_BYTES));
+	                         bs->blocks + (BITMAP_START_BLOCK * BLOCK_SIZE_BYTES));
 	if (!bs->fbm)
 	{
 		free(bs->blocks);
