@@ -25,17 +25,11 @@ struct block_store
 
 block_store_t *block_store_create()
 {
-	//This is old that ben has fixed
-	// block_store_t * new_block = calloc(1, sizeof(block_store_t));
-	// if (new_block == NULL) return NULL;
-	// new_block->fbm = bitmap_overlay(BITMAP_SIZE_BITS, (void * const)BITMAP_START_BLOCK);
-	// block_store_request(new_block, BITMAP_START_BLOCK);
-	// return new_block;
-
 	//allocate stuct
 	block_store_t *bs = (block_store_t*)calloc(1, sizeof(block_store_t));
 	if(!bs)	//check to see if memory was allocate
 	{
+		perror("Allocate struct failed");
 		return NULL; //memory allocation failed return NULL
 	}
 
@@ -43,6 +37,7 @@ block_store_t *block_store_create()
 	bs->blocks = (uint8_t*)calloc(BLOCK_STORE_NUM_BLOCKS, BLOCK_SIZE_BYTES);
 	if(!bs->blocks)	//check to see if blocks allocated
 	{
+		perror("Allocate storage failed");
 		free(bs); //free block struct
 		return NULL;
 	}
@@ -51,6 +46,7 @@ block_store_t *block_store_create()
 	bs->fbm = bitmap_overlay(BITMAP_SIZE_BITS, bs->blocks + (BITMAP_START_BLOCK * BLOCK_SIZE_BYTES));
 	if(!bs->fbm)
 	{
+		perror("Overlay failed");
 		free(bs->blocks);
 		free(bs);
 		return NULL;
@@ -68,11 +64,12 @@ block_store_t *block_store_create()
 
 void block_store_destroy(block_store_t *const bs)
 {
+	//if block does not exist, return
 	if (!bs)
 	{
 		return;
 	}
-
+	//free all blocks
 	bitmap_destroy(bs->fbm);
 	free(bs->blocks);
 	free(bs);
@@ -255,6 +252,7 @@ block_store_t *block_store_deserialize(const char *const filename)
 	block_store_t *bs = calloc(1, sizeof(block_store_t));
 	if (!bs)
 	{
+		perror("Allocate struct failed");
 		fclose(fp);
 		return NULL;
 	}
@@ -263,6 +261,7 @@ block_store_t *block_store_deserialize(const char *const filename)
 	bs->blocks = calloc(BLOCK_STORE_NUM_BLOCKS, BLOCK_SIZE_BYTES);
 	if (!bs->blocks)
 	{
+		perror("Allocate storage failed");
 		fclose(fp);
 		free(bs);
 		return NULL;
@@ -285,6 +284,7 @@ block_store_t *block_store_deserialize(const char *const filename)
 							 bs->blocks + (BITMAP_START_BLOCK * BLOCK_SIZE_BYTES));
 	if (!bs->fbm)
 	{
+		perror("Overlay failed");
 		free(bs->blocks);
 		free(bs);
 		return NULL;
