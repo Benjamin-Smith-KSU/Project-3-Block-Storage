@@ -29,7 +29,9 @@ block_store_t *block_store_create()
 	block_store_t *bs = (block_store_t*)calloc(1, sizeof(block_store_t));
 	if(!bs)	//check to see if memory was allocate
 	{
-		perror("Allocate struct failed");
+		if (errno = ENOMEM){
+			perror("Allocate struct failed: insufficent memory");
+		}
 		return NULL; //memory allocation failed return NULL
 	}
 
@@ -37,7 +39,9 @@ block_store_t *block_store_create()
 	bs->blocks = (uint8_t*)calloc(BLOCK_STORE_NUM_BLOCKS, BLOCK_SIZE_BYTES);
 	if(!bs->blocks)	//check to see if blocks allocated
 	{
-		perror("Allocate storage failed");
+		if (errno = ENOMEM){
+			perror("Allocate block failed: insufficent memory");
+		}
 		free(bs); //free block struct
 		return NULL;
 	}
@@ -250,8 +254,12 @@ block_store_t *block_store_deserialize(const char *const filename)
 
 	// allocate block store struct
 	block_store_t *bs = calloc(1, sizeof(block_store_t));
+	
 	if (!bs)
 	{
+		if (errno = ENOMEM){
+			perror("Allocate struct failed: insufficent memory");
+		}
 		close(fd);
 		return NULL;
 	}
@@ -259,7 +267,10 @@ block_store_t *block_store_deserialize(const char *const filename)
 	// allocate raw block storage
 	bs->blocks = calloc(BLOCK_STORE_NUM_BLOCKS, BLOCK_SIZE_BYTES);
 	if (!bs->blocks)
-	{
+	{		
+		if (errno = ENOMEM){
+			perror("Allocate block failed: insufficent memory");
+		}
 		close(fd);
 		free(bs);
 		return NULL;
@@ -313,7 +324,10 @@ size_t block_store_serialize(const block_store_t *const bs, const char *const fi
 	//check to see if file opened
 	if(fd < 0)
 	{
-		perror("Open failed");
+		int errchk = errno;
+		if (errchk == EACCES){
+			perror("Permissions Denied");
+		}
 		return 0; //could not open file
 	}
 
@@ -322,7 +336,10 @@ size_t block_store_serialize(const block_store_t *const bs, const char *const fi
 
 	if (bytes_written < 0 || (size_t)bytes_written != (BLOCK_STORE_NUM_BLOCKS * BLOCK_SIZE_BYTES))
 	{
-		perror("write failed");	//could not write
+		int errchk = errno;
+		if (errchk == EACCES){
+			perror("Permissions Denied");
+		}
 		close(fd);
 		return 0;
 	}
