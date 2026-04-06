@@ -3,8 +3,13 @@
 
 #include "bitmap.h"
 #include "block_store.h"
+#include <stdlib.h> //for calloc and free
 // include more if you need
 #include <string.h> //for memcpy
+#include <errno.h>	//for error messages
+#include <fcntl.h>    // open, O_* flags
+#include <unistd.h>   // write, read, close
+#include <sys/stat.h>  // mode constants for permissions like 0666
 
 // You might find this handy. I put it around unused parameters, but you should
 // remove it before you submit. Just allows things to compile initially.
@@ -108,7 +113,7 @@ size_t block_store_allocate(block_store_t *const bs)
 bool block_store_request(block_store_t *const bs, const size_t block_id)
 {
 	//verify inputs
-	if(!bs || !bs->fbm || !block_id)
+	if(!bs || !bs->fbm)
 	{
 		return false;
 	}
@@ -153,7 +158,7 @@ void block_store_release(block_store_t *const bs, const size_t block_id)
 size_t block_store_get_used_blocks(const block_store_t *const bs)
 {
 	// check if value is null, if so, return impossible value
-	if (!bs || !bs->fbm) return -1;
+	if (!bs || !bs->fbm) return SIZE_MAX;
 	// return value of used blocks
 	return bitmap_total_set(bs->fbm);
 }
@@ -161,7 +166,7 @@ size_t block_store_get_used_blocks(const block_store_t *const bs)
 size_t block_store_get_free_blocks(const block_store_t *const bs)
 {
 	// check if value is null, if so, return impossible value
-	if (!bs || !bs->fbm) return -1;
+	if (!bs || !bs->fbm) return SIZE_MAX;
 	// return value of free blocks
 	return (BLOCK_STORE_NUM_BLOCKS - bitmap_total_set(bs->fbm));
 }
@@ -203,21 +208,121 @@ size_t block_store_read(const block_store_t *const bs, const size_t block_id, vo
 
 size_t block_store_write(block_store_t *const bs, const size_t block_id, const void *buffer)
 {
-	UNUSED(bs);
-	UNUSED(block_id);
-	UNUSED(buffer);
-	return 0;
+	//-------------input validation------------------
+	//check to see if all inputs are valid
+	if (!bs || !buffer || !bs->blocks || !bs->fbm)
+	{
+		return 0;
+	}
+
+	//check block bounds
+	if (block_id >= BLOCK_STORE_NUM_BLOCKS)
+	{
+		return 0;
+	}
+
+	//check that block is allocated
+	if (!bitmap_test(bs->fbm, block_id))
+	{
+		return 0;
+	}
+
+	//compute destination address
+	uint8_t *dest = bs->blocks + (block_id * BLOCK_SIZE_BYTES);
+
+	//copy buffer into block storage
+	memcpy(dest, buffer, BLOCK_SIZE_BYTES);
+
+	return BLOCK_SIZE_BYTES;
 }
 
 block_store_t *block_store_deserialize(const char *const filename)
 {
-	UNUSED(filename);
-	return NULL;
+	// validate input
+	if (!filename)
+	{
+		return NULL;
+	}
+
+	// open file for binary read
+	FILE *fp = fopen(filename, "rb");
+	if (!fp)
+	{
+		return NULL;
+	}
+
+	// allocate block store struct
+	block_store_t *bs = calloc(1, sizeof(block_store_t));
+	if (!bs)
+	{
+		fclose(fp);
+		return NULL;
+	}
+
+	// allocate raw block storage
+	bs->blocks = calloc(BLOCK_STORE_NUM_BLOCKS, BLOCK_SIZE_BYTES);
+	if (!bs->blocks)
+	{
+		fclose(fp);
+		free(bs);
+		return NULL;
+	}
+
+	// read all block data from file
+	size_t bytes_expected = BLOCK_STORE_NUM_BLOCKS * BLOCK_SIZE_BYTES;
+	size_t bytes_read = fread(bs->blocks, 1, bytes_expected, fp);
+	fclose(fp);
+
+	if (bytes_read != bytes_expected)
+	{
+		free(bs->blocks);
+		free(bs);
+		return NULL;
+	}
+
+	// recreate bitmap overlay using the bitmap region inside block storage
+	bs->fbm = bitmap_overlay(BITMAP_SIZE_BITS,
+							 bs->blocks + (BITMAP_START_BLOCK * BLOCK_SIZE_BYTES));
+	if (!bs->fbm)
+	{
+		free(bs->blocks);
+		free(bs);
+		return NULL;
+	}
+
+	return bs;
 }
 
 size_t block_store_serialize(const block_store_t *const bs, const char *const filename)
 {
-	UNUSED(bs);
-	UNUSED(filename);
-	return 0;
+	//validate inputs
+	if(!bs || !bs->blocks || !bs ->fbm || !filename)
+	{
+		return 0; //inputs were null
+	}
+
+	//open file as write only, create if does not exist, overwite,
+	//and with file permission = read + write for user, group and other
+	int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+
+	//check to see if file opened
+	if(fd < 0)
+	{
+		perror("Open failed");
+		return 0; //could not open file
+	}
+
+	//write to entire device
+	ssize_t bytes_written = write(fd, bs->blocks, BLOCK_STORE_NUM_BLOCKS * BLOCK_SIZE_BYTES);
+
+	if (bytes_written < 0 || (size_t)bytes_written != (BLOCK_STORE_NUM_BLOCKS * BLOCK_SIZE_BYTES))
+	{
+		perror("write failed");	//could not write
+		close(fd);
+		return 0;
+	}
+
+	//close file
+	close(fd);
+	return(bytes_written);
 }
